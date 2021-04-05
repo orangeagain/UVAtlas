@@ -20,10 +20,20 @@ extern "C" {
         _UVATLAS_FORCE_U32 = 0x7FFFFFFF
     } uvatlas_options;
 
-    static std::vector<DirectX::UVAtlasVertex> vMeshOutVertexBuffer;
-    static std::vector<uint8_t> vMeshOutIndexBuffer;
+    typedef struct uvatlas_vertex
+    {
+        DirectX::XMFLOAT3 pos;
+        DirectX::XMFLOAT2 uv;
+    } uvatlas_vertex;
 
-    EXPORT_C_API HRESULT uvatlas_create(
+    typedef struct uvatlas_result {
+        uint32_t            verticesCount;
+        uvatlas_vertex*     vertices;
+        uint32_t            indicesCount;
+        uint8_t*            indices;
+    } uvatlas_result;
+
+    EXPORT_C_API uvatlas_result* uvatlas_create(
         const DirectX::XMFLOAT3* positions, size_t nVerts,
         const void* indices, DXGI_FORMAT indexFormat, size_t nFaces,
         size_t maxChartNumber, float maxStretch,
@@ -33,9 +43,13 @@ extern "C" {
         const float* pIMTArray,
         /*std::function<HRESULT(float percentComplete)> statusCallBack,*/
         float callbackFrequency,
-        uvatlas_options options)
+        uvatlas_options options,
+        HRESULT* result)
     {
-        return DirectX::UVAtlasCreate(positions, nVerts,
+        std::vector<DirectX::UVAtlasVertex> vMeshOutVertexBuffer;
+        std::vector<uint8_t> vMeshOutIndexBuffer;
+
+        *result = DirectX::UVAtlasCreate(positions, nVerts,
             indices, indexFormat, nFaces,
             maxChartNumber, maxStretch,
             width, height,
@@ -47,6 +61,27 @@ extern "C" {
             (DirectX::UVATLAS)options,
             vMeshOutVertexBuffer,
             vMeshOutIndexBuffer);
+
+        if (FAILED(*result)) {
+            return nullptr;
+        }
+
+        uvatlas_result* atlas_result = new uvatlas_result();
+        atlas_result->verticesCount = static_cast<uint32_t>(vMeshOutVertexBuffer.size());
+        atlas_result->indicesCount = static_cast<uint32_t>(vMeshOutIndexBuffer.size());
+        atlas_result->vertices = new uvatlas_vertex[vMeshOutVertexBuffer.size()];
+        atlas_result->indices = new uint8_t[vMeshOutIndexBuffer.size()];
+        memcpy(atlas_result->vertices, vMeshOutVertexBuffer.data(), vMeshOutVertexBuffer.size());
+        memcpy(atlas_result->indices, vMeshOutIndexBuffer.data(), vMeshOutIndexBuffer.size());
+        return atlas_result;
+    }
+
+    EXPORT_C_API void uvatlas_delete(uvatlas_result* result)
+    {
+        delete[] result->vertices;
+        delete[] result->indices;
+        delete result;
+        result = nullptr;
     }
 
 #ifdef __cplusplus
