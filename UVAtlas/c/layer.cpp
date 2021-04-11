@@ -31,11 +31,13 @@ extern "C" {
         uvatlas_vertex*     vertices;
         uint32_t            indicesCount;
         uint8_t*            indices;
+        float               stretch;
+        size_t              charts;
     } uvatlas_result;
 
     EXPORT_C_API uvatlas_result* uvatlas_create(
         const DirectX::XMFLOAT3* positions, size_t nVerts,
-        const void* indices, DXGI_FORMAT indexFormat, size_t nFaces,
+        const void* indices, bool is32Bit, size_t nFaces,
         size_t maxChartNumber, float maxStretch,
         size_t width, size_t height,
         float gutter,
@@ -46,11 +48,15 @@ extern "C" {
         uvatlas_options options,
         HRESULT* result)
     {
+        uvatlas_result* atlas_result = new uvatlas_result();
+
         std::vector<DirectX::UVAtlasVertex> vMeshOutVertexBuffer;
         std::vector<uint8_t> vMeshOutIndexBuffer;
+        std::vector<uint32_t> facePartitioning;
+        std::vector<uint32_t> vertexRemapArray;
 
         *result = DirectX::UVAtlasCreate(positions, nVerts,
-            indices, indexFormat, nFaces,
+            indices, is32Bit ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, nFaces,
             maxChartNumber, maxStretch,
             width, height,
             gutter,
@@ -60,13 +66,18 @@ extern "C" {
             callbackFrequency,
             (DirectX::UVATLAS)options,
             vMeshOutVertexBuffer,
-            vMeshOutIndexBuffer);
+            vMeshOutIndexBuffer,
+            &facePartitioning,
+            &vertexRemapArray,
+            &atlas_result->stretch,
+            &atlas_result->charts);
 
-        if (FAILED(*result)) {
+        if (FAILED(*result))
+        {
+            delete atlas_result;
             return nullptr;
         }
 
-        uvatlas_result* atlas_result = new uvatlas_result();
         atlas_result->verticesCount = static_cast<uint32_t>(vMeshOutVertexBuffer.size());
         atlas_result->indicesCount = static_cast<uint32_t>(vMeshOutIndexBuffer.size());
         atlas_result->vertices = new uvatlas_vertex[vMeshOutVertexBuffer.size()];
