@@ -165,5 +165,6 @@
     <None Include="isochart\meshcommon.inl">
       <Filter>Isochart</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
