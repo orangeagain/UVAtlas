@@ -78,21 +78,16 @@ extern "C" {
         _UVATLAS_FORCE_U32 = 0x7FFFFFFF
     } uvatlas_options;
 
-    typedef struct uvatlas_vertex
-    {
-        DirectX::XMFLOAT3 pos;
-        DirectX::XMFLOAT2 uv;
-    } uvatlas_vertex;
-
     typedef struct uvatlas_result {
-        uint32_t            verticesCount;
-        uvatlas_vertex*     vertices;
-        uint32_t            indicesCount;
-        uint32_t*           indices;
-        uint32_t*           facePartitioning;
-        uint32_t*           vertexRemapArray;
-        float               stretch;
-        size_t              charts;
+        int32_t                 result;
+        uint32_t                verticesCount;
+        uint32_t                indicesCount;
+        DirectX::UVAtlasVertex* vertices;
+        uint32_t*               indices;
+        uint32_t*               facePartitioning;
+        uint32_t*               vertexRemapArray;
+        float                   stretch;
+        uint32_t                charts;
     } uvatlas_result;
 
     EXPORT_C_API uvatlas_result* uvatlas_create_uint32(
@@ -105,17 +100,17 @@ extern "C" {
         const float* pIMTArray,
         /*std::function<HRESULT(float percentComplete)> statusCallBack,*/
         float callbackFrequency,
-        uvatlas_options options,
-        HRESULT* result)
+        uvatlas_options options)
     {
         uvatlas_result* atlas_result = new uvatlas_result();
 
-        std::vector<DirectX::UVAtlasVertex> vMeshOutVertexBuffer;
-        std::vector<uint8_t> vMeshOutIndexBuffer;
+        std::vector<DirectX::UVAtlasVertex> vertexBuffer;
+        std::vector<uint8_t> indexBuffer;
         std::vector<uint32_t> facePartitioning;
         std::vector<uint32_t> vertexRemapArray;
+        size_t charts;
 
-        *result = DirectX::UVAtlasCreate(positions, nVerts,
+        atlas_result->result = DirectX::UVAtlasCreate(positions, nVerts,
             indices, DXGI_FORMAT_R32_UINT, nFaces,
             maxChartNumber, maxStretch,
             width, height,
@@ -125,31 +120,31 @@ extern "C" {
             nullptr,
             callbackFrequency,
             (DirectX::UVATLAS)options,
-            vMeshOutVertexBuffer,
-            vMeshOutIndexBuffer,
+            vertexBuffer,
+            indexBuffer,
             &facePartitioning,
             &vertexRemapArray,
             &atlas_result->stretch,
-            &atlas_result->charts);
+            &charts);
 
-        if (FAILED(*result))
+        if (FAILED(atlas_result->result))
         {
-            delete atlas_result;
-            return nullptr;
+            return atlas_result;
         }
 
-        auto newIB = reinterpret_cast<const uint32_t*>(&vMeshOutIndexBuffer.front());
+        auto newIB = reinterpret_cast<const uint32_t*>(&indexBuffer.front());
 
-        atlas_result->verticesCount = static_cast<uint32_t>(vMeshOutVertexBuffer.size());
+        atlas_result->verticesCount = static_cast<uint32_t>(vertexBuffer.size());
         atlas_result->indicesCount = static_cast<uint32_t>(nFaces * 3);
-        atlas_result->vertices = new uvatlas_vertex[vMeshOutVertexBuffer.size()];
+        atlas_result->vertices = new DirectX::UVAtlasVertex[atlas_result->verticesCount];
         atlas_result->indices = new uint32_t[atlas_result->indicesCount];
-        atlas_result->facePartitioning = new uint32_t[vMeshOutVertexBuffer.size()];
-        atlas_result->vertexRemapArray = new uint32_t[vMeshOutVertexBuffer.size()];
-        memcpy(atlas_result->vertices, vMeshOutVertexBuffer.data(), vMeshOutVertexBuffer.size());
+        atlas_result->facePartitioning = new uint32_t[atlas_result->verticesCount];
+        atlas_result->vertexRemapArray = new uint32_t[atlas_result->verticesCount];
+        atlas_result->charts = static_cast<uint32_t>(charts);
+        std::copy(vertexBuffer.begin(), vertexBuffer.end(), atlas_result->vertices);
         memcpy(atlas_result->indices, newIB, atlas_result->indicesCount * sizeof(uint32_t));
-        memcpy(atlas_result->facePartitioning, facePartitioning.data(), facePartitioning.size());
-        memcpy(atlas_result->vertexRemapArray, vertexRemapArray.data(), vertexRemapArray.size());
+        std::copy(facePartitioning.begin(), facePartitioning.end(), atlas_result->facePartitioning);
+        std::copy(vertexRemapArray.begin(), vertexRemapArray.end(), atlas_result->vertexRemapArray);
         return atlas_result;
     }
 
