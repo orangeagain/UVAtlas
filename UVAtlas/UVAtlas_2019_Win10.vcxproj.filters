@@ -157,10 +157,14 @@
     <ClCompile Include="isochart\Vis_Maxflow.cpp">
       <Filter>Isochart</Filter>
     </ClCompile>
+    <ClCompile Include="c\layer.cpp">
+      <Filter>Geodesics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="isochart\meshcommon.inl">
       <Filter>Isochart</Filter>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>
